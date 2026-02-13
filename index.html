@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Federated Fraud Detection | Distributed Dashboard</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --secondary-color: #6c757d;
+            --success-color: #198754;
+            --bg-light: #f8f9fa;
+        }
+
+        body {
+            background-color: #f0f2f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Card Styling */
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid #eee;
+            border-radius: 12px 12px 0 0 !important;
+            font-weight: 600;
+            color: #444;
+        }
+
+        /* Network Topology Visualization */
+        .network-container {
+            height: 300px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .server-node {
+            width: 80px;
+            height: 80px;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            z-index: 10;
+            box-shadow: 0 0 15px rgba(13, 110, 253, 0.5);
+            position: relative;
+        }
+
+        .client-node {
+            width: 60px;
+            height: 60px;
+            background-color: white;
+            border: 2px solid var(--secondary-color);
+            color: var(--secondary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            transition: all 0.3s;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        /* Positioning Clients around Server */
+        .client-1 { top: 20px; left: 50%; transform: translateX(-50%); }
+        .client-2 { bottom: 40px; left: 20%; }
+        .client-3 { bottom: 40px; right: 20%; }
+
+        /* Animation Lines */
+        .connection-line {
+            position: absolute;
+            background-color: #ddd;
+            height: 2px;
+            transform-origin: 0 0;
+            z-index: 1;
+        }
+
+        /* Active Training Animation */
+        .training .client-node {
+            border-color: var(--success-color);
+            color: var(--success-color);
+            box-shadow: 0 0 10px rgba(25, 135, 84, 0.3);
+        }
+
+        .training .server-node {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(13, 110, 253, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0); }
+        }
+
+        /* Console/Logs */
+        .log-window {
+            background-color: #1e1e1e;
+            color: #0f0;
+            font-family: 'Courier New', Courier, monospace;
+            height: 250px;
+            overflow-y: auto;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .log-entry { margin-bottom: 5px; }
+        .log-time { color: #888; margin-right: 10px; }
+
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-dark bg-dark mb-4">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">
+                <i class="fas fa-shield-alt me-2"></i>FraudGuard AI <small class="text-muted" style="font-size: 0.6em;">Federated Learning System</small>
+            </span>
+            <span class="text-light badge bg-secondary" id="status-badge">System Idle</span>
+        </div>
+    </nav>
+
+    <div class="container-fluid px-4">
+        
+        <!-- Top Metrics Row -->
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted">Global Accuracy</h6>
+                            <h3 id="acc-display">0.00%</h3>
+                        </div>
+                        <div class="fs-1 text-primary"><i class="fas fa-chart-line"></i></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted">Current Round</h6>
+                            <h3 id="round-display">0 / 5</h3>
+                        </div>
+                        <div class="fs-1 text-warning"><i class="fas fa-sync-alt"></i></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="text-muted">Active Nodes</h6>
+                            <h3>3 Banks</h3>
+                        </div>
+                        <div class="fs-1 text-success"><i class="fas fa-network-wired"></i></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card p-3">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary" onclick="startSimulation()" id="start-btn">
+                            <i class="fas fa-play me-2"></i>Start Training
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="resetSimulation()">
+                            <i class="fas fa-undo me-2"></i>Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Middle Section: Topology & Chart -->
+        <div class="row">
+            
+            <!-- Network Visualizer -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-project-diagram me-2"></i>Network Topology (Distributed)
+                    </div>
+                    <div class="card-body">
+                        <div class="network-container" id="network-map">
+                            <!-- Central Server -->
+                            <div class="server-node">
+                                <i class="fas fa-server fs-4"></i>
+                                <small>Global</small>
+                            </div>
+                            
+                            <!-- Lines (visual decoration) -->
+                            <div class="connection-line" style="width: 100px; top: 110px; left: 50%; transform: rotate(90deg) translateX(-50%);"></div>
+                            <div class="connection-line" style="width: 120px; top: 180px; left: 35%; transform: rotate(30deg);"></div>
+                            <div class="connection-line" style="width: 120px; top: 180px; right: 35%; transform: rotate(-30deg);"></div>
+
+                            <!-- Clients -->
+                            <div class="client-node client-1">Bank A</div>
+                            <div class="client-node client-2">Bank B</div>
+                            <div class="client-node client-3">Bank C</div>
+                        </div>
+                        <div class="text-center mt-2 text-muted small">
+                            <i class="fas fa-lock me-1"></i> Data remains local on Bank Nodes
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-area me-2"></i>Training Performance (Accuracy vs Rounds)
+                    </div>
+                    <div class="card-body">
+                        <canvas id="trainingChart" style="height: 280px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Section: Logs -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-dark text-white border-0">
+                        <i class="fas fa-terminal me-2"></i>Server Logs (Federated Aggregation)
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="log-window" id="console-logs">
+                            <div class="log-entry"><span class="log-time">[System]</span> Ready to initialize Federated Learning...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // --- 1. SETUP CHART ---
+        const ctx = document.getElementById('trainingChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Global Model Accuracy',
+                    data: [],
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: false, min: 50, max: 100 }
+                }
+            }
+        });
+
+        // --- 2. SIMULATION LOGIC ---
+        const logs = document.getElementById('console-logs');
+        const networkMap = document.getElementById('network-map');
+        const accDisplay = document.getElementById('acc-display');
+        const roundDisplay = document.getElementById('round-display');
+        const statusBadge = document.getElementById('status-badge');
+        let currentRound = 0;
+        let isRunning = false;
+
+        function addLog(message, type="Info") {
+            const time = new Date().toLocaleTimeString();
+            const color = type === "Server" ? "#0d6efd" : (type === "Client" ? "#198754" : "#fff");
+            logs.innerHTML += `<div class="log-entry"><span class="log-time">[${time}]</span> <span style="color:${color}; font-weight:bold;">${type}:</span> ${message}</div>`;
+            logs.scrollTop = logs.scrollHeight; // Auto scroll
+        }
+
+        async function startSimulation() {
+            if(isRunning) return;
+            isRunning = true;
+            document.getElementById('start-btn').disabled = true;
+            statusBadge.className = "badge bg-success";
+            statusBadge.innerText = "Training Active";
+            
+            // Reset Chart
+            chart.data.labels = [];
+            chart.data.datasets[0].data = [];
+            chart.update();
+
+            addLog("Initializing Global Model...", "Server");
+            await wait(1000);
+
+            // Simulation Loop for 5 Rounds
+            for (let i = 1; i <= 5; i++) {
+                currentRound = i;
+                roundDisplay.innerText = `${i} / 5`;
+                
+                // 1. Distribute Phase
+                addLog(`Round ${i}: Broadcasting weights to Bank A, Bank B, Bank C`, "Server");
+                networkMap.classList.add('training'); // Visual pulse
+                await wait(1500);
+
+                // 2. Local Training Phase
+                addLog(`Round ${i}: Bank A training on local data (2000 records)...`, "Client");
+                await wait(500);
+                addLog(`Round ${i}: Bank B training on local data (1850 records)...`, "Client");
+                await wait(500);
+                addLog(`Round ${i}: Bank C training on local data (2100 records)...`, "Client");
+                await wait(1000);
+
+                // 3. Aggregation Phase
+                networkMap.classList.remove('training');
+                addLog(`Round ${i}: Receiving updated weights... Aggregating (FedAvg)`, "Server");
+                
+                // Calculate simulated accuracy (Logistic curve simulation)
+                let baseAcc = 60;
+                let randomVar = Math.random() * 5;
+                let simulatedAcc = baseAcc + (35 * (1 - Math.exp(-0.5 * i))) + randomVar;
+                if(simulatedAcc > 99) simulatedAcc = 99.1;
+
+                // Update UI
+                accDisplay.innerText = simulatedAcc.toFixed(2) + "%";
+                chart.data.labels.push(`Round ${i}`);
+                chart.data.datasets[0].data.push(simulatedAcc);
+                chart.update();
+                
+                addLog(`Round ${i} Complete. Global Accuracy: ${simulatedAcc.toFixed(2)}%`, "Server");
+                await wait(1500);
+            }
+
+            // Finish
+            addLog("Target accuracy reached. Model deployed.", "System");
+            statusBadge.className = "badge bg-primary";
+            statusBadge.innerText = "Training Complete";
+            document.getElementById('start-btn').disabled = false;
+            isRunning = false;
+        }
+
+        function resetSimulation() {
+            location.reload();
+        }
+
+        function wait(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+    </script>
+</body>
+</html>
