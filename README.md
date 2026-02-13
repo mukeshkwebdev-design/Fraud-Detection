@@ -1,1 +1,2 @@
 # Fraud-Detection
+This project implements a Federated Learning based Financial Fraud Detection System using PyTorch. The system simulates multiple banks collaboratively training a fraud detection model without sharing sensitive transaction data, ensuring privacy and security.Instead of centralizing data, each bank trains the model locally and only shares model weights with a central server for aggregation.
